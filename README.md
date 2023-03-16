@@ -6,6 +6,11 @@ In the terminal run <b>poetry install</b>, after the installer finishes, run <b>
 
 ### Projects
 <ol>
-  <li>Road classification project, the goal is to create a classifier that detects if a road is clean or not</li>
+  <li>
+    <ul>
+      <li>Road classification project, the goal is to create a classifier that detects if a road is clean or not</li>
+      <li>Used mobilenet as feature extractor and for fine tuning</li>
+     </ul>
+   </li>
 </ol>
 
