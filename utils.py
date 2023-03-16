@@ -1,5 +1,17 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
+import os
+import zipfile
+
+DONWLOADS_FOLDER = "/home/olaf/Downloads"
+
+def data_extractor(file_name):
+    # Extract the file
+    if not os.path.exists(os.path.join(os.getcwd(), "datasets")):
+        os.makedirs(os.path.join(os.getcwd(), "datasets"))
+    if not os.path.exists(os.path.join(os.path.join(os.getcwd(), f"datasets/{file_name}"))):
+        with zipfile.ZipFile(f"{DONWLOADS_FOLDER}/{file_name}.zip", "r") as zp:
+            zp.extractall(os.path.join(os.getcwd(), f"datasets/{file_name}"))
 
 def plot_history(history, fine_tune_epoch, title=""):
     """
