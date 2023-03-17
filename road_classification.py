@@ -78,11 +78,10 @@ merged_ds = (train_ds
 ##############
 ### MODELS ###
 ##############
-# %% Without data augmentation
 base_mobilenet = tf.keras.applications.mobilenet_v2.MobileNetV2(
     weights="imagenet", include_top=False, input_shape=IMG_SHAPE
     )
-
+# %% Without data augmentation
 base_mobilenet.trainable = False
 model =  make_model(IMG_SHAPE, base_mobilenet)
 
@@ -149,10 +148,6 @@ plot_history((loss, val_loss, acc, val_acc), initial_epochs, "With data augmenta
 
 # %%
 # %% Without data augmentation
-base_mobilenet = tf.keras.applications.mobilenet_v2.MobileNetV2(
-    weights="imagenet", include_top=False, input_shape=IMG_SHAPE
-    )
-
 base_mobilenet.trainable = False
 model_merged =  make_model(IMG_SHAPE, base_mobilenet)
 
@@ -176,7 +171,7 @@ model_merged.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.00001),
 
 history_fine_merged = model_merged.fit(merged_ds,
                         epochs = initial_epochs + fine_tune_epochs,
-                        initial_epoch=history_initial.epoch[-1],
+                        initial_epoch=history_initial_merged.epoch[-1],
                         validation_data=valid_ds)
 
 # Plots
@@ -186,4 +181,19 @@ val_acc = history_initial_merged.history["val_binary_accuracy"] + history_fine_m
 val_loss = history_initial_merged.history["val_loss"] + history_fine_merged.history["val_loss"]
 
 plot_history((loss, val_loss, acc, val_acc), initial_epochs, "On the augmented dataset")
+# %% Predictions on the Validation set
+# Retrieve a batch of images from the test set
+image_batch, label_batch = valid_ds.as_numpy_iterator().next()
+predictions = model_merged.predict_on_batch(image_batch).flatten()
+
+# Apply a sigmoid since our model returns logits
+predictions = tf.nn.sigmoid(predictions)
+predictions = tf.where(predictions < 0.5, 0, 1)
+
+plt.figure(figsize=(10, 10))
+for i in range(9):
+    ax = plt.subplot(3, 3, i + 1)
+    plt.imshow(image_batch[i].astype("uint8"))
+    plt.title(class_names[predictions[i]])
+    plt.axis("off")
 # %%
