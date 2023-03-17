@@ -8,17 +8,15 @@ import zipfile
 import cv2
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from utils import plot_history, make_model
+from utils import plot_history, make_model, data_extractor
 
-
-DATA_PATH = os.path.join(os.getcwd(), "datasets/road_classification/Images")
-BATCH_SIZE=32
-IMG_SHAPE=(224,224,3)
+PROJECT_NAME = __file__.split("/")[-1][:-3]
+DATA_PATH = os.path.join(os.getcwd(), f"datasets/{PROJECT_NAME}/Images")
+BATCH_SIZE = 32
+IMG_SHAPE = (224,224,3)
 
 # Extract the file
-if not os.path.exists(os.path.join(os.path.join(os.getcwd(), "datasets/road_classification"))):
-    with zipfile.ZipFile("/home/olaf/Downloads/road_classification.zip", "r") as zp:
-        zp.extractall(os.path.join(os.getcwd(), "datasets/road_classification"))
+data_extractor(PROJECT_NAME)
 
 # Load the data
 metadata = pd.read_csv(os.path.join(DATA_PATH, os.pardir, "metadata.csv"))
@@ -27,7 +25,7 @@ metadata = metadata.assign(
         lambda y: cv2.resize(cv2.imread(os.path.join(DATA_PATH, "Images", y)), (224,224)),
     )
 )
-
+# %%
 # Plot some images
 class_names = ["clean", "dirty"]
 plt.figure(figsize=(10,7))
@@ -78,10 +76,10 @@ merged_ds = (train_ds
 ##############
 ### MODELS ###
 ##############
-# %% Without data augmentation
 base_mobilenet = tf.keras.applications.mobilenet_v2.MobileNetV2(
     weights="imagenet", include_top=False, input_shape=IMG_SHAPE
     )
+# %% Without data augmentation
 
 base_mobilenet.trainable = False
 model =  make_model(IMG_SHAPE, base_mobilenet)
