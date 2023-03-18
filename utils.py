@@ -37,7 +37,7 @@ def plot_history(history, fine_tune_epoch, title=""):
     plt.show()
 
 
-def make_model(shape, base_model, augmentation=None):
+def road_classification_model(shape, base_model, augmentation=None):
     """
     Returned a model using as feature extractor the base_model
     Args:
@@ -68,3 +68,31 @@ def make_model(shape, base_model, augmentation=None):
     outputs = tf.keras.layers.Dense(1)(x)
 
     return  tf.keras.Model(inputs, outputs)
+
+class PollutionModel(tf.keras.Model):
+    def __init__(self):
+        super(PollutionModel, self).__init__()
+        self.preprocess = tf.keras.layers.Rescaling(1./255)
+        self.block1 = self.simple_conv_block(32)
+        self.block2 = self.simple_conv_block(64)
+        self.block3 = self.simple_conv_block(128)
+        self.glob = tf.keras.layers.GlobalAveragePooling2D()
+        self.d1 = tf.keras.layers.Dense(128, activation='relu')
+        self.d2 = tf.keras.layers.Dense(11)
+
+    def call(self, x):
+        x = self.preprocess(x)
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x = self.glob(x)
+        x = self.d1(x)
+        return self.d2(x)
+    
+    def simple_conv_block(self, filters, kernel_size=3, strides=(1,1)):
+        return tf.keras.Sequential([
+            tf.keras.layers.Conv2D(filters=filters, kernel_size=kernel_size, strides=strides),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.MaxPooling2D((2,2)),
+            tf.keras.layers.ReLU(),
+        ])

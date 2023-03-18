@@ -8,7 +8,7 @@ import zipfile
 import cv2
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from utils import plot_history, make_model, data_extractor
+from utils import plot_history, road_classification_model, data_extractor
 
 PROJECT_NAME = __file__.split("/")[-1][:-3]
 DATA_PATH = os.path.join(os.getcwd(), f"datasets/{PROJECT_NAME}/Images")
@@ -82,7 +82,7 @@ base_mobilenet = tf.keras.applications.mobilenet_v2.MobileNetV2(
 # %% Without data augmentation
 
 base_mobilenet.trainable = False
-model =  make_model(IMG_SHAPE, base_mobilenet)
+model =  road_classification_model(IMG_SHAPE, base_mobilenet)
 
 model.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
@@ -116,7 +116,7 @@ val_loss = history_initial.history["val_loss"] + history_fine.history["val_loss"
 plot_history((loss, val_loss, acc, val_acc), initial_epochs, "Without data augmentation")
 
 # %% With data augmentation
-model_augm = make_model(IMG_SHAPE, base_mobilenet, augmentation=data_augm)
+model_augm = road_classification_model(IMG_SHAPE, base_mobilenet, augmentation=data_augm)
 model_augm.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
                    loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
                    metrics=tf.keras.metrics.BinaryAccuracy())
@@ -152,7 +152,7 @@ base_mobilenet = tf.keras.applications.mobilenet_v2.MobileNetV2(
     )
 
 base_mobilenet.trainable = False
-model_merged =  make_model(IMG_SHAPE, base_mobilenet)
+model_merged =  road_classification_model(IMG_SHAPE, base_mobilenet)
 
 model_merged.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
