@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow.keras.layers as tfl
 import matplotlib.pyplot as plt
 import os
 import zipfile
@@ -16,7 +17,7 @@ def data_extractor(file_name):
             zp.extractall(os.path.join(os.getcwd(), f"datasets/{file_name}"))
 
 
-def plot_history(history, fine_tune_epoch, title=""):
+def plot_history(history, fine_tune_epoch=None, title=""):
     """
     Plots the history
     Args:
@@ -28,11 +29,13 @@ def plot_history(history, fine_tune_epoch, title=""):
     fig.suptitle(title)
     ax[0].plot(loss, label="Loss")
     ax[0].plot(val_loss, label="Val_loss")
-    ax[0].plot([fine_tune_epoch, fine_tune_epoch], [0, max(loss+val_loss)], label="Fine tune point")
+    if fine_tune_epoch:
+        ax[0].plot([fine_tune_epoch, fine_tune_epoch], [min(loss+val_loss)-0.1, max(loss+val_loss)], label="Fine tune point")
     ax[0].legend(loc="upper right")
     ax[1].plot(acc, label="Accuracy")
     ax[1].plot(val_acc, label="Val_Accuracy")
-    ax[1].plot([fine_tune_epoch, fine_tune_epoch], [0, max(acc+val_acc)], label="Fine tune point")
+    if fine_tune_epoch:
+        ax[1].plot([fine_tune_epoch, fine_tune_epoch], [min(acc+val_acc)-0.1, max(acc+val_acc)], label="Fine tune point")
     ax[1].legend(loc="lower right")
     plt.show()
 
@@ -55,44 +58,114 @@ def road_classification_model(shape, base_model, augmentation=None):
     if augmentation:
         x = augmentation(x)
     x = base(x, training=False)
-    x = tf.keras.layers.Conv2D(256, (3,3), padding="same")(x)
-    x = tf.keras.layers.BatchNormalization(axis=1)(x)
-    x = tf.keras.layers.Activation("relu")(x)
-    x = tf.keras.layers.Conv2D(512, (3,3))(x)
-    x = tf.keras.layers.BatchNormalization(axis=1)(x)
-    x = tf.keras.layers.Activation("relu")(x)
-    x = tf.keras.layers.MaxPooling2D((2,2))(x)
-    x = tf.keras.layers.GlobalAveragePooling2D()(x)
-    x = tf.keras.layers.Dense(400, activation="relu")(x)
-    x = tf.keras.layers.Dropout(0.2)(x)
-    outputs = tf.keras.layers.Dense(1)(x)
+    x = tfl.Conv2D(256, (3,3), padding="same")(x)
+    x = tfl.BatchNormalization(axis=1)(x)
+    x = tfl.Activation("relu")(x)
+    x = tfl.Conv2D(512, (3,3))(x)
+    x = tfl.BatchNormalization(axis=1)(x)
+    x = tfl.Activation("relu")(x)
+    x = tfl.MaxPooling2D((2,2))(x)
+    x = tfl.GlobalAveragePooling2D()(x)
+    x = tfl.Dense(400, activation="relu")(x)
+    x = tfl.Dropout(0.2)(x)
+    outputs = tfl.Dense(1)(x)
 
     return  tf.keras.Model(inputs, outputs)
 
-class PollutionModel(tf.keras.Model):
-    def __init__(self):
-        super(PollutionModel, self).__init__()
-        self.preprocess = tf.keras.layers.Rescaling(1./255)
-        self.block1 = self.simple_conv_block(32)
-        self.block2 = self.simple_conv_block(64)
-        self.block3 = self.simple_conv_block(128)
-        self.glob = tf.keras.layers.GlobalAveragePooling2D()
-        self.d1 = tf.keras.layers.Dense(128, activation='relu')
-        self.d2 = tf.keras.layers.Dense(11)
 
-    def call(self, x):
-        x = self.preprocess(x)
-        x = self.block1(x)
-        x = self.block2(x)
-        x = self.block3(x)
-        x = self.glob(x)
-        x = self.d1(x)
-        return self.d2(x)
-    
-    def simple_conv_block(self, filters, kernel_size=3, strides=(1,1)):
-        return tf.keras.Sequential([
-            tf.keras.layers.Conv2D(filters=filters, kernel_size=kernel_size, strides=strides),
-            tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.MaxPooling2D((2,2)),
-            tf.keras.layers.ReLU(),
-        ])
+def pollution_model_transfer(shape):
+
+    base_model = tf.keras.applications.mobilenet_v2.MobileNetV2(weights="imagenet", include_top=False, input_shape=shape)
+    base_model.trainable = False
+    inputs = tf.keras.Input(shape=shape)
+    x = tf.keras.applications.mobilenet_v2.preprocess_input(inputs)
+    x = base_model(x , training=False)
+    x = conv_block(x, [256, 256, 512])
+    x = identity_block(x, [256, 256])
+    x = identity_block(x, [512, 512])
+    x = tfl.GlobalAveragePooling2D()(x)
+    x = tfl.Dense(256)(x)
+    x = tfl.Dropout(0.4)(x)
+    x = tfl.Dense(128)(x)
+    x = tfl.Dropout(0.4)(x)
+    outputs = tfl.Dense(11)(x)
+
+    return tf.keras.models.Model(inputs, outputs)
+
+
+def my_pollution_resnet(shape):
+
+    inputs = tf.keras.Input(shape=shape)
+    x = tfl.Conv2D(64, (7,7))(inputs)
+    x = tfl.BatchNormalization(axis=3)(x)
+    x = tfl.Activation("relu")(x)
+    x = tfl.MaxPooling2D((2,2))(x)
+
+    x = conv_block(x, [128,128, 256])
+    x = identity_block(x, [128,128,256])
+    x = identity_block(x, [128,128,256])
+
+    x = tfl.GlobalAveragePooling2D()(x)
+    outputs = tfl.Dense(11)(x)
+
+    return tf.keras.Model(inputs, outputs)
+
+
+def identity_block(input_tensor, filters, kernel_size=(3,3)):
+    """
+    Residual identity convolutional block with three convolutions
+    inputs:
+        input_tensor: tensor in shape (batch, x, y, channel)
+        filters: list or tuple with three elements
+        kernel_size: kernel size of the second convolution
+    return:
+        tensor same dimensions as input_tensor
+    """
+    shape = input_tensor.shape
+    f1, f2 = filters
+    x = tfl.Conv2D(f1, (1,1))(input_tensor)
+    x = tfl.BatchNormalization(axis=3)(x)
+    x = tfl.Activation("relu")(x)
+
+    x = tfl.Conv2D(f2, kernel_size, padding="same")(x)
+    x = tfl.BatchNormalization(axis=3)(x)
+    x = tfl.Activation("relu")(x)
+
+    x = tfl.Conv2D(shape[-1], (1,1))(x)
+    x = tfl.BatchNormalization(axis=3)(x)
+
+    x = tfl.Add()([input_tensor, x])
+    return tfl.Activation("relu")(x)
+
+
+def conv_block(input_tensor, filters, kernel=(3,3)):
+    """
+    Residual convolutional block with three convolutions
+    inputs:
+        input_tensor: tensor in shape (batch, x, y, channel)
+        filters: list or tuple with three elements
+        kernel_size: kernel size of the second convolution
+    return:
+        tensor dimensions defined by the third filter size
+    """
+
+    x = tfl.Conv2D(filters[0], (1,1), data_format="channels_last")(input_tensor)
+    x = tfl.BatchNormalization(axis=3)(x)
+    x = tfl.Activation("relu")(x)
+
+    x = tfl.Conv2D(filters[1],
+                           kernel, 
+                           data_format="channels_last", 
+                           padding="same")(x)
+    x = tfl.BatchNormalization(axis=3)(x)
+    x = tfl.Activation("relu")(x)
+
+    x = tfl.Conv2D(filters[2], (1,1), data_format="channels_last")(x)
+    x = tfl.BatchNormalization(axis=3)(x)
+
+    short = tfl.Conv2D(filters[2], (1,1), data_format="channels_last")(input_tensor)
+    short = tfl.BatchNormalization(axis=3)(short)
+        
+    x = tfl.Add()([x, short])
+    return tfl.Activation("relu")(x)
+
