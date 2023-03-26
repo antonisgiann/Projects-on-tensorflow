@@ -6,19 +6,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import gc
-from utils import data_extractor, PollutionModel
+from utils import data_extractor, my_pollution_resnet, plot_history, pollution_model_transfer
+from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
 
 PROJECT_NAME = __file__.split("/")[-1][:-3]
 DATA_PATH = os.path.join(os.getcwd(), "datasets", PROJECT_NAME)
 BATCH_SIZE = 32
 IMG_SHAPE = (224,224,3)
 
+# Extract and load the data
 data_extractor(PROJECT_NAME)
 
 train_metadata = pd.read_csv(os.path.join(DATA_PATH, "train.csv"))
 test_metadata = pd.read_csv(os.path.join(DATA_PATH, "train.csv"))
 class_names = dict(zip(train_metadata["class"].astype(int), train_metadata["name"]))
 
+# Load images as numpy arrays
 if not os.path.exists(os.path.join(DATA_PATH, "train_dataset")):
     train_metadata = train_metadata.assign(
         image = lambda x: x["image_path"]
@@ -47,61 +50,93 @@ else:
     train_ds = tf.data.Dataset.load(os.path.join(DATA_PATH, "train_dataset"))
     test_ds = tf.data.Dataset.load(os.path.join(DATA_PATH, "test_dataset"))
 
-train_ds = train_ds.batch(BATCH_SIZE).cache().prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-test_ds = test_ds.batch(BATCH_SIZE).cache().prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+# Create a testset
+num_of_batches = tf.data.experimental.cardinality(test_ds).numpy()
+valid_ds = test_ds.take(int(0.8 * num_of_batches))
+test_ds = test_ds.skip(int(0.8 * num_of_batches))
+
+train_ds = train_ds.shuffle(50000).batch(BATCH_SIZE).cache().prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+valid_ds = valid_ds.shuffle(50000).batch(BATCH_SIZE).cache().prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 train_ds = train_ds.map(lambda img, label: (tf.cast(img, tf.float32), label))
-test_ds = test_ds.map(lambda img, label: (tf.cast(img, tf.float32), label))
+valid_ds = valid_ds.map(lambda img, label: (tf.cast(img, tf.float32), label))
 
 #############
 ###MODELS####
 #############
-model = PollutionModel()
+# %% Transfer learning on mobilenet_v2
+model = pollution_model_transfer(IMG_SHAPE)
 
-loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+               metrics=tf.keras.metrics.SparseCategoricalAccuracy())
 
-train_loss = tf.keras.metrics.Mean(name='train_loss')
-train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
+history = model.fit(train_ds, epochs=15, validation_data=valid_ds)
+# Fine tune 
+for l in model.layers[3].layers[int(0.7*len(model.layers[3].layers)):]:
+    l.trainable=True
 
-test_loss = tf.keras.metrics.Mean(name='test_loss')
-test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0005),
+               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+               metrics=tf.keras.metrics.SparseCategoricalAccuracy())
 
-@tf.function
-def train_step(images, labels):
-    with tf.GradientTape() as tape:
-        preds = model(images, training=True)
-        loss = loss_object(labels, preds)
-    grads = tape.gradient(loss, model.trainable_weights)
-    optimizer.apply_gradients(zip(grads, model.trainable_weights))
+history2 = model.fit(train_ds, 
+                      epochs=15,
+                      validation_data=valid_ds, 
+                      initial_epoch=history.epoch[-1])
+# %%Plots
+plot_history(
+    (history.history["loss"] + history2.history["loss"],
+        history.history["val_loss"] + history2.history["val_loss"],
+        history.history["sparse_categorical_accuracy"] + history2.history["sparse_categorical_accuracy"],
+        history.history["val_sparse_categorical_accuracy"] + history2.history["val_sparse_categorical_accuracy"]),
+    history.epoch[-1]
+)
+# %% Trying with data augmentation to see if it improves model performance
+model2 = pollution_model_transfer(IMG_SHAPE)
 
-    train_loss(loss)
-    train_accuracy(labels,preds)
+model_augm = tf.keras.Sequential([
+    tf.keras.layers.RandomFlip("horizontal", seed=47),
+    tf.keras.layers.RandomRotation(0.1, seed=47),
+    model2
+])
 
-@tf.function
-def test_step(images, labels):
-    preds = model(images, training=False)
-    loss = loss_object(labels, preds)
+model_augm.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+               metrics=["accuracy"])
 
-    test_loss(loss)
-    test_accuracy(labels, preds)
+history = model_augm.fit(train_ds, epochs=15, validation_data=valid_ds)
+# Fine tune 
+for l in model_augm.layers[2].layers[3].layers[int(0.7*len(model_augm.layers[2].layers[3].layers)):]:
+    l.trainable=True
 
-# Training loop
-epochs = 10
-for i in range(epochs):
-    train_loss.reset_states()
-    train_accuracy.reset_states()
-    test_loss.reset_states()
-    test_accuracy.reset_states()
+model_augm.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.00001),
+               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+               metrics=["accuracy"])
 
-    for img , label in train_ds:
-        train_step(img, label)
-        test_step(img, label)
-
-    print(
-            f"Epoch {i+1}, " +
-            f"Loss {train_loss.result()}, " +
-            f"Accuracy {train_accuracy.result()}, " +
-            f"Test Loss {test_loss.result()}, " +
-            f"Test Accuracy {test_accuracy.result()}"
-        )
-# %%x
+history2 = model_augm.fit(train_ds, 
+                      epochs=35,
+                      validation_data=test_ds, 
+                      initial_epoch=history.epoch[-1])
+# Plots
+plot_history(
+    (history.history["loss"] + history2.history["loss"],
+        history.history["val_loss"] + history2.history["val_loss"],
+        history.history["accuracy"] + history2.history["accuracy"],
+        history.history["accuracy"] + history2.history["val_accuracy"]),
+    history.epoch[-1]
+)
+# %% Show some predictions on test set
+test_unit = test_ds.shuffle(50000).take(1)
+preds = np.argmax(tf.nn.softmax(model.predict(test_unit)), axis=1)
+for img, labels in test_unit:
+    plt.figure(figsize=(10,10))
+    for i in range(16):
+        plt.subplot(4, 4, i+1)
+        if labels[i] == preds[i]:
+            color = "black"
+        else:
+            color = "red"
+        plt.imshow(img[i].numpy().astype("uint8"))
+        plt.title(f"{class_names[preds[i]]}", color=color)
+        plt.axis("off")
+# %%
