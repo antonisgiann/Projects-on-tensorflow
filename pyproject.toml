@@ -13,6 +13,7 @@ matplotlib = "^3.7.1"
 jupyter = "^1.0.0"
 opencv-python = "^4.7.0.72"
 scikit-learn = "^1.2.2"
+opendatasets = "^0.1.22"
 
 
 [build-system]
