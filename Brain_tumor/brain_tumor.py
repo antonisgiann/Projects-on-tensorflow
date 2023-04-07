@@ -58,7 +58,7 @@ plot_history((history.history["loss"],
               history.history["val_accuracy"]))
 
 # %% fine tuning
-for layer in model.layers[2].layers[int(len(model.layers[2].layers)*0.7):]:
+for layer in model.layers[4].layers[int(len(model.layers[4].layers)*0.7):]:
     layer.trainable = True
 
 model.compile(optimizer=tf.keras.optimizers.Adamax(learning_rate=0.0001),
