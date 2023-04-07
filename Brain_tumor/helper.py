@@ -23,7 +23,7 @@ def brain_tumor_model(shape, num_classes):
     
     inputs = tf.keras.Input(shape=shape)
     x = data_augm(inputs)
-    x = tf.keras.applications.efficientnet.preprocess_input(x)
+    x = tf.keras.applications.mobilenet_v2.preprocess_input(x)
     x = base_model(x, training=False)
     x = tf.keras.layers.BatchNormalization(axis=-1)(x)
     x = tf.keras.layers.Dense(300,

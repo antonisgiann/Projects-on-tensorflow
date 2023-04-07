@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import os
 from sklearn.model_selection import train_test_split
-from utils import plot_history, data_extractor
+from utils import plot_history
 from helper import brain_tumor_model
 import opendatasets as od
 
@@ -16,38 +16,41 @@ DATA_PATH = os.path.join("../datasets", PROJECT_NAME)
 BATCH_SIZE = 96
 IMG_SHAPE = (224,224,3)
 
-od.download(PROJECT_URL, f"../datasets")
+od.download(PROJECT_URL, "../datasets")
 
-# Extract the data in the dataset folder in the cwd
-# data_extractor(PROJECT_NAME)
+files = []
+classes = []
+for c in os.listdir(DATA_PATH):
+    for f in os.listdir(os.path.join(DATA_PATH, c)):
+        classes.append(c)
+        files.append(os.path.join(DATA_PATH, c, f))
+
+metadata = pd.DataFrame({"filepath":files, "tumor":classes})
 # %%
 num_classes = len(os.listdir(DATA_PATH))
 
-train_ds = tf.keras.utils.image_dataset_from_directory(
-    DATA_PATH, 
-    subset="training",
-    image_size=IMG_SHAPE[:-1],
-    validation_split=0.2,
-    seed=47,
-    batch_size=BATCH_SIZE)
+X_train, X_valid = train_test_split(metadata, test_size=0.2, random_state=47, stratify=metadata["tumor"])
+X_valid, X_test = train_test_split(X_valid, test_size=0.5, random_state=47, stratify=X_valid["tumor"])
 
-valid_ds = tf.keras.utils.image_dataset_from_directory(
-    DATA_PATH, 
-    subset="validation",
-    image_size=IMG_SHAPE[:-1],
-    validation_split=0.2,
-    seed=47,
-    batch_size=BATCH_SIZE)
-
-train_ds = train_ds.map(lambda img, label: (img, tf.one_hot(label, depth=44)))
-valid_ds = valid_ds.map(lambda img, label: (img, tf.one_hot(label, depth=44)))
+train_gen = tf.keras.preprocessing.image.ImageDataGenerator(horizontal_flip=True).flow_from_dataframe(
+    X_train, x_col="filepath", y_col="tumor", target_size=(224,224), color_mode="rgb",
+    class_mode="categorical", batch_size=BATCH_SIZE, seed=47
+)
+valid_gen = tf.keras.preprocessing.image.ImageDataGenerator(horizontal_flip=True).flow_from_dataframe(
+    X_valid, x_col="filepath", y_col="tumor", target_size=(224,224), color_mode="rgb",
+    class_mode="categorical", batch_size=BATCH_SIZE, seed=47
+)
+test_gen = tf.keras.preprocessing.image.ImageDataGenerator(horizontal_flip=True).flow_from_dataframe(
+    X_test, x_col="filepath", y_col="tumor", target_size=(224,224), color_mode="rgb",
+    class_mode="categorical", batch_size=BATCH_SIZE, seed=47
+)
 
 model = brain_tumor_model(IMG_SHAPE, num_classes)
 model.compile(optimizer=tf.keras.optimizers.Adamax(learning_rate=0.001),
               loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
               metrics=["accuracy"])
 
-history = model.fit(train_ds, epochs=20, validation_data=valid_ds)
+history = model.fit(train_gen, epochs=20, validation_data=valid_gen)
 
 plot_history((history.history["loss"],
               history.history["val_loss"],
@@ -62,7 +65,7 @@ model.compile(optimizer=tf.keras.optimizers.Adamax(learning_rate=0.0001),
               loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
               metrics=["accuracy"])
 
-history2 = model.fit(train_ds, epochs=40, initial_epoch=history.epoch[-1], validation_data=valid_ds)
+history2 = model.fit(train_gen, epochs=40, initial_epoch=history.epoch[-1], validation_data=valid_gen)
 
 plot_history((history.history["loss"] + history2.history["loss"],
               history.history["val_loss"] + history2.history["val_loss"],
