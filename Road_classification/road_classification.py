@@ -1,17 +1,19 @@
 # %%
+import sys
+sys.path.append("..")
 import tensorflow as tf
 import numpy as np
 import os
-import shutil
 import pandas as pd
-import zipfile
 import cv2
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from utils import plot_history, road_classification_model, data_extractor
+from utils import plot_history, data_extractor
+from helper import road_classification_model
+
 
 PROJECT_NAME = __file__.split("/")[-1][:-3]
-DATA_PATH = os.path.join(os.getcwd(), f"datasets/{PROJECT_NAME}/Images")
+DATA_PATH = os.path.join(f"../datasets/{PROJECT_NAME}/Images")
 BATCH_SIZE = 32
 IMG_SHAPE = (224,224,3)
 

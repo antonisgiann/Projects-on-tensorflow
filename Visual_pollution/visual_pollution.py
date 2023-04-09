@@ -5,9 +5,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
-import gc
-from utils import data_extractor, my_pollution_resnet, plot_history, pollution_model_transfer
-from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
+from utils import data_extractor, plot_history
+from helper import  pollution_model_transfer
+
 
 PROJECT_NAME = __file__.split("/")[-1][:-3]
 DATA_PATH = os.path.join(os.getcwd(), "datasets", PROJECT_NAME)
