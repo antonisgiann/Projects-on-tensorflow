@@ -1,5 +1,4 @@
-# Tensorflow
-## Different ML projects on tensorflow
+## ML projects on tensorflow
 
 ### Environment set up
 In the terminal run <b>poetry install</b>, after the installer finishes, run <b>poetry shell</b> and then <b>pip install tensorflow</b> to add tensorflow in the environment
@@ -19,6 +18,13 @@ In the terminal run <b>poetry install</b>, after the installer finishes, run <b>
      	<li>Visual pollution project, <a href="https://www.kaggle.com/datasets/abhranta/urban-visual-pollution-dataset" target="_blank"> link of the dataset</a>, the goal is to create an image detector that finds visual pollutions in an image.</li>
       <li>Used mobilenet as feature extractor and for fine tuning.</li>
       <li>The script expects a <b>visual_pollution.zip</b> file in the Downloads home folder</li>
+   </li>
+   <br>
+  <li>
+     <ul>
+     	<li>Brain tumors project, <a href="https://www.kaggle.com/datasets/fernando2rad/brain-tumor-mri-images-44c" target="_blank"> link of the dataset</a>, the goal is to create a classifier that sees a brain scan and decides what brain tumor it is.</li>
+      <li>EfficientNet was the best performer for trasnfer learning.</li>
+      <li>The script expects a <b>kaggle.json</b> file with the kaggle API credentials in the workding directory of the script to be used by <b>opendatasets</b> to download and extract the dataset in the <b>datasets</b> directory</li>
    </li>
 </ol>
 
