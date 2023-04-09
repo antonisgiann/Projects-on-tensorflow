@@ -23,7 +23,7 @@ In the terminal run <b>poetry install</b>, after the installer finishes, run <b>
    </li>
    <br>
   <li>
-    <h3>Brain tumors
+    <h3>Brain tumors</h3>
      <ul>
      	<li><a href="https://www.kaggle.com/datasets/fernando2rad/brain-tumor-mri-images-44c" target="_blank"> link of the dataset</a>, the goal is to create a classifier that sees a brain scan and decides what brain tumor it is.</li>
       <li>EfficientNet was the best performer for trasnfer learning.</li>
