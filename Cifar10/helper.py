@@ -23,6 +23,7 @@ class ModelWrapper():
         for i in range(epochs):
             pass
             # work in progress
+
     def get_model(self):
         return self.model
     
@@ -38,6 +39,12 @@ class MyCallBack(tf.keras.callbacks.Callback):
         self.stop_wait = 0
 
     def on_epoch_end(self, epoch, logs=None):
+        """
+        This function runs at the end of each epoch and
+        checks if the accuracy of the network improves.
+        if not and a number of epochs has passed, increase learning rate by 20%
+        if not and a number of epochs has passed, stop training
+        """
         current_acc = logs.get("val_accuracy")
         if current_acc > self.best_acc:
             self.best_weights = self.model.get_weights()
@@ -59,6 +66,13 @@ class MyCallBack(tf.keras.callbacks.Callback):
 
 
 def simple_dense_model(shape: tuple):
+        """
+        Defines a simple dense neural network
+        inputs:
+            shape: tuple, the shape of the input of the network
+        returns:
+            tf.keras.Model
+        """
         inputs = tf.keras.Input(shape=shape)
         x = tf.keras.layers.Flatten(input_shape=shape)(inputs)
         x = tf.keras.layers.Dense(500, 
