@@ -19,11 +19,12 @@ class ModelWrapper():
     def __init__(self, model):
         self.model = model
 
-    def compile(self, optimizer, loss_fn):
+    def compile(self, optimizer, loss, metrics):
         self.optimizer = optimizer
-        self.loss_fn = loss_fn
+        self.loss_fn = loss
+        self.train_accuracy_calc = metrics()
+        self.valid_accuracy_calc = metrics()
 
-    @tf.function
     def fit(self, x_train, y_train, epochs, batch_size, validation_data):
         """
         Defines a custom training loop
@@ -35,49 +36,65 @@ class ModelWrapper():
             validation_data: tuple in format (x_validation, y_validation)
         """
         # work in progress
-        train_accuracy_calc = tf.keras.metrics.SparseCategoricalAccuracy(name="train_accuracy")
-        valid_accuracy_calc = tf.keras.metrics.SparseCategoricalAccuracy(name="valid_accuracy")
         epoch_train_loss = []
         epoch_train_accuracy = []
         epoch_valid_loss = []
         epoch_valid_accuracy = []
         for i in range(epochs):
-            train_loss, train_accuracy, valid_loss, valid_accuracy = [], [], [], []
-
-            # work in progress
             # Batch training
+            valid_loss_list = []
+            valid_accuracy_list = []
+            epoch_start = time.time()
             for j in range(x_train.shape[0]//batch_size):
                 x_train_b = x_train[j: j + batch_size]
                 y_train_b = y_train[j: j + batch_size]
-                loss, preds = self.train_step(x_train_b, y_train_b)
-                train_loss.append(loss)
-                train_accuracy.append(train_accuracy_calc(y_train_b, preds).numpy())
-            
+                train_loss, train_preds = self.train_step(x_train_b, y_train_b)
+            epoch_time = self.time_in_human_format(time.time() - epoch_start)
             # Validation
             for j in range(validation_data[0].shape[0]//batch_size):
                 x_valid_b = validation_data[0][j: j + batch_size]
-                y_valid_b = validation_data[0][j: j + batch_size]
-                valid_preds = self.model(x_valid_b, y_valid_b)
-                t_loss = self.loss_fn(y_valid_b, valid_preds)
-                valid_loss.append(t_loss)
-                valid_accuracy.append(valid_accuracy_calc(y_valid_b, valid_preds).numpy())
+                y_valid_b = validation_data[1][j: j + batch_size]
+                valid_preds = self.model(x_valid_b)
+                valid_loss_list.append(self.loss_fn(y_valid_b, valid_preds).numpy())
+                valid_accuracy_list.append(self.valid_accuracy_calc(y_valid_b, valid_preds).numpy())
             
+            train_accuracy = self.train_accuracy_calc(y_train_b, train_preds).numpy()
+            valid_loss = np.mean(valid_loss_list)
+            valid_accuracy = np.mean(valid_accuracy_list)
+            
+            print(f"Epoch number {i}, training time: {epoch_time} -->  loss: {train_loss.numpy():.4f}, accuracy: {train_accuracy:.4f}, val_loss: {valid_loss:.4f}, val_accuracy: {valid_accuracy:.4f}")
             # Save metrics
-            epoch_train_loss.append(np.mean(train_loss))
-            epoch_train_accuracy.append(np.mean(train_accuracy))
-            epoch_valid_loss.append(np.mean(valid_loss))
-            epoch_valid_accuracy.append(np.mean(valid_accuracy))
+            epoch_train_loss.append(train_loss.numpy())
+            epoch_train_accuracy.append(train_accuracy)
+            epoch_valid_loss.append(valid_loss)
+            epoch_valid_accuracy.append(valid_accuracy)
 
-
-    @tf.function
+        return {
+            "loss": epoch_train_loss,
+            "accuracy": epoch_train_accuracy,
+            "val_loss": epoch_valid_loss,
+            "val_accuracy": epoch_valid_accuracy
+        }
+    
     def train_step(self, x_train, y_train):
         with tf.GradientTape() as tape:
             preds = self.model(x_train, training=True)
             loss = self.loss_fn(y_train, preds)
         grads = tape.gradient(loss, self.model.trainable_variables)
-        self.optimizer.apply_gradients(zip(grads, self.mode.trainable_variables))
+        self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
 
         return loss, preds
+    
+    def time_in_human_format(self, t):
+        hours = int(t//3600)
+        minutes = int((t - hours * 3600)//60)
+        seconds = round(t - hours * 3600 - minutes * 60, 2)
+        if hours > 0:
+            return f"{hours} hours, {minutes} minutes, {seconds}s"
+        elif minutes > 0:
+            return f"{minutes} minutes, {seconds}s"
+        else:
+            return f"{seconds}s"
 
     def get_model(self):
         return self.model

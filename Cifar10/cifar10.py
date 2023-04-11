@@ -34,6 +34,28 @@ plt.show()
 ####MODELS#####
 ###############
 
+# Testing custom training loop
+test_model = tf.keras.Sequential([
+    tf.keras.layers.Flatten(input_shape=IMG_SHAPE),
+    tf.keras.layers.Dense(100, activation="relu"),
+    tf.keras.layers.Dense(100, activation="relu"),
+    tf.keras.layers.Dense(10)
+])
+
+# test_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+#              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+#              metrics=tf.keras.metrics.SparseCategoricalAccuracy())
+
+# history = test_model.fit(X_train, y_train, epochs=10, batch_size=BATCH_SIZE, validation_data=(X_valid,y_valid))
+
+wrap = ModelWrapper(test_model)
+wrap.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+             metrics=tf.keras.metrics.SparseCategoricalAccuracy)
+
+history = wrap.fit(X_train, y_train, epochs=10, batch_size=BATCH_SIZE, 
+                   validation_data=(X_valid, y_valid))
+
 ### Simple Dense model ###
 # %% Get the simple dense model
 model_den = tf.keras.Sequential([
