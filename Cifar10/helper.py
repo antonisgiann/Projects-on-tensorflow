@@ -1,5 +1,5 @@
 import tensorflow as tf
-import numpy as np
+import time
 
 object_map = {
     0: "Airplane",
@@ -28,15 +28,18 @@ class ModelWrapper():
         return self.model
     
 
-class MyCallBack(tf.keras.callbacks.Callback):
+class EarlyStopLearningRateCallback(tf.keras.callbacks.Callback):
     def __init__(self, lr_patience=3, stop_patience=5):
-        super(MyCallBack, self).__init__()
+        super(EarlyStopLearningRateCallback, self).__init__()
         self.lr_patience = lr_patience
         self.stop_patience = stop_patience
         self.best_weights = None
         self.best_acc = 0
         self.lr_wait = 0
         self.stop_wait = 0
+
+    def on_train_begin(self, logs=None):
+        self.start = time.time()
 
     def on_epoch_end(self, epoch, logs=None):
         """
@@ -65,6 +68,11 @@ class MyCallBack(tf.keras.callbacks.Callback):
                 self.model.set_weights(self.best_weights)
 
     def on_train_end(self, logs):
+        train_end = time.time() - self.start
+        hours = int(train_end//3600)
+        minutes = int((train_end - hours*3600)//60)
+        seconds = round(train_end - hours*3600 - minutes*60, 0)
+        print(f"Total training time -> {hours} hours, {minutes:2.0f} minutes, {seconds:2.2f} seconds")
         self.model.set_weights(self.best_weights)
 
 

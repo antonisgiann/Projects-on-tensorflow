@@ -4,7 +4,7 @@ sys.path.append("..")
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
-from helper import object_map, ModelWrapper, simple_dense_model, MyCallBack
+from helper import object_map, ModelWrapper, simple_dense_model, EarlyStopLearningRateCallback
 from utils import plot_history
 
 # Download the data and split test set to validation and test set
@@ -44,9 +44,9 @@ model.compile(optimizer=tf.keras.optimizers.Adamax(learning_rate=0.001),
 history = model.fit(X_train, 
                     y_train, 
                     batch_size=BATCH_SIZE, 
-                    epochs=20, 
+                    epochs=40, 
                     validation_data=(X_valid,y_valid),
-                    callbacks=[MyCallBack()]
+                    callbacks=[EarlyStopLearningRateCallback()]
                     )
 
 # Plot training
