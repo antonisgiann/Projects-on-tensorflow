@@ -42,7 +42,7 @@ class MyCallBack(tf.keras.callbacks.Callback):
         """
         This function runs at the end of each epoch and
         checks if the accuracy of the network improves.
-        if not and a number of epochs has passed, increase learning rate by 20%
+        if not and a number of epochs has passed, decrease learning rate by 50%
         if not and a number of epochs has passed, stop training
         """
         current_acc = logs.get("val_accuracy")
@@ -56,13 +56,16 @@ class MyCallBack(tf.keras.callbacks.Callback):
             self.stop_wait += 1
             if self.lr_wait == self.lr_patience:
                 current_lr = tf.keras.backend.get_value(self.model.optimizer.learning_rate)
-                new_lr = current_lr + 0.2 * current_lr
+                new_lr = current_lr * 0.5
                 tf.keras.backend.set_value(self.model.optimizer.learning_rate, new_lr)
                 print("\nThe learning rate has changed, old value was {0} and the new value is {1}".format(current_lr, new_lr))
                 self.lr_wait = 0
             if self.stop_wait == self.stop_patience:
                 self.model.stop_training = True
                 self.model.set_weights(self.best_weights)
+
+    def on_train_end(self, logs):
+        self.model.set_weights(self.best_weights)
 
 
 def simple_dense_model(shape: tuple):
