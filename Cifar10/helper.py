@@ -16,14 +16,14 @@ object_map = {
 }
 
 class ModelWrapper():
-    def __init__(self, model):
+    def __init__(self, model, optimizer=tf.keras.optimizers.Adam()):
         self.model = model
-
-    def compile(self, optimizer, loss, metrics):
         self.optimizer = optimizer
-        self.loss_fn = loss
-        self.train_accuracy_calc = metrics()
-        self.valid_accuracy_calc = metrics()
+        self.loss_objective = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        self.train_loss = tf.keras.metrics.Mean(name="train_loss")
+        self.valid_loss = tf.keras.metrics.Mean(name="valid_loss")
+        self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name="train_accuracy")
+        self.valid_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name="valid_accuracy")
 
     def fit(self, x_train, y_train, epochs, batch_size, validation_data):
         """
@@ -36,35 +36,36 @@ class ModelWrapper():
             validation_data: tuple in format (x_validation, y_validation)
         """
         # work in progress
+        train_ds = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size)
+        if not str(type(validation_data)).split(".")[-1].startswith("BatchDataset"):
+            validation_data = tf.data.Dataset.from_tensor_slices((validation_data[0], validation_data[1])).batch(batch_size)
         epoch_train_loss = []
         epoch_train_accuracy = []
         epoch_valid_loss = []
         epoch_valid_accuracy = []
         for i in range(epochs):
             # Batch training
-            valid_loss_list = []
-            valid_accuracy_list = []
-            epoch_start = time.time()
-            for j in range(x_train.shape[0]//batch_size):
-                x_train_b = x_train[j: j + batch_size]
-                y_train_b = y_train[j: j + batch_size]
-                train_loss, train_preds = self.train_step(x_train_b, y_train_b)
-            epoch_time = self.time_in_human_format(time.time() - epoch_start)
+            self.train_loss.reset_states()
+            self.valid_loss.reset_states()
+            self.train_accuracy.reset_states()
+            self.valid_accuracy.reset_states()
+            training_begin = time.time()
+            for images, labels in train_ds:
+                self.train_step(images, labels)
+            training_end = time.time()
+            epoch_time = self.time_in_human_format(training_end - training_begin)
             # Validation
-            for j in range(validation_data[0].shape[0]//batch_size):
-                x_valid_b = validation_data[0][j: j + batch_size]
-                y_valid_b = validation_data[1][j: j + batch_size]
-                valid_preds = self.model(x_valid_b)
-                valid_loss_list.append(self.loss_fn(y_valid_b, valid_preds).numpy())
-                valid_accuracy_list.append(self.valid_accuracy_calc(y_valid_b, valid_preds).numpy())
+            for imgs, labels in validation_data:
+                self.valid_step(imgs, labels)
             
-            train_accuracy = self.train_accuracy_calc(y_train_b, train_preds).numpy()
-            valid_loss = np.mean(valid_loss_list)
-            valid_accuracy = np.mean(valid_accuracy_list)
+            train_loss = self.train_loss.result()
+            train_accuracy = self.train_accuracy.result()
+            valid_loss = self.valid_loss.result()
+            valid_accuracy = self.valid_accuracy.result()
             
-            print(f"Epoch number {i}, training time: {epoch_time} -->  loss: {train_loss.numpy():.4f}, accuracy: {train_accuracy:.4f}, val_loss: {valid_loss:.4f}, val_accuracy: {valid_accuracy:.4f}")
+            print(f"Epoch number {i}, training time: {epoch_time} -->  loss: {train_loss:.4f}, accuracy: {train_accuracy:.4f}, val_loss: {valid_loss:.4f}, val_accuracy: {valid_accuracy:.4f}")
             # Save metrics
-            epoch_train_loss.append(train_loss.numpy())
+            epoch_train_loss.append(train_loss)
             epoch_train_accuracy.append(train_accuracy)
             epoch_valid_loss.append(valid_loss)
             epoch_valid_accuracy.append(valid_accuracy)
@@ -76,14 +77,29 @@ class ModelWrapper():
             "val_accuracy": epoch_valid_accuracy
         }
     
+    @tf.function
     def train_step(self, x_train, y_train):
         with tf.GradientTape() as tape:
             preds = self.model(x_train, training=True)
-            loss = self.loss_fn(y_train, preds)
+            loss = self.loss_objective(y_train, preds)
         grads = tape.gradient(loss, self.model.trainable_variables)
         self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
 
-        return loss, preds
+        self.train_loss(loss)
+        self.train_accuracy(y_train, preds)
+    
+    @tf.function
+    def valid_step(self, x_test, y_valid):
+        preds = self.model(x_test)
+        valid_loss = self.loss_objective(y_valid, preds)
+
+        self.valid_loss(valid_loss)
+        self.valid_accuracy(y_valid, preds)
+
+    def evaluate(self, x_train, y_train):
+        preds = self.model(x_train)
+
+        return tf.keras.metrics.SparseCategoricalAccuracy()(y_train, preds).numpy()
     
     def time_in_human_format(self, t):
         hours = int(t//3600)
