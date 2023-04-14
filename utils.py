@@ -77,7 +77,6 @@ def conv_block(input_tensor, filters, kernel=(3,3)):
     return:
         tensor dimensions defined by the third filter size
     """
-
     x = tfl.Conv2D(filters[0], (1,1), data_format="channels_last")(input_tensor)
     x = tfl.BatchNormalization(axis=3)(x)
     x = tfl.Activation("relu")(x)
