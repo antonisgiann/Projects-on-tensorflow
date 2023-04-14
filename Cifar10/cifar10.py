@@ -41,24 +41,21 @@ model_den = tf.keras.Sequential([
 ])
 
 # Compile and train the model
-model_den.compile(optimizer=tf.keras.optimizers.Adamax(learning_rate=0.001),
-              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-              metrics=["accuracy"])
+wrap_simple_den = ModelWrapper(model_den, tf.keras.optimizers.Adamax(learning_rate=0.001))
 
-history_dense = model_den.fit(X_train, 
+history_dense = wrap_simple_den.fit(X_train, 
                     y_train, 
                     batch_size=BATCH_SIZE, 
                     epochs=20, 
                     validation_data=(X_valid,y_valid),
-                    callbacks=[EarlyStopLearningRateCallback()]
                     )
 
 # Plot training
 plot_history(
-    (history_dense.history["loss"],
-     history_dense.history["val_loss"],
-     history_dense.history["accuracy"],
-     history_dense.history["val_accuracy"])
+    (history_dense["loss"],
+     history_dense["val_loss"],
+     history_dense["accuracy"],
+     history_dense["val_accuracy"])
 )
 # %% Simple convolutional model
 model_simple_conv = tf.keras.Sequential([
@@ -67,24 +64,21 @@ model_simple_conv = tf.keras.Sequential([
 ])
 
 # Compile and train the model
-model_simple_conv.compile(optimizer=tf.keras.optimizers.Adamax(learning_rate=0.001),
-              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-              metrics=["accuracy"])
+wrap_simple_conv = ModelWrapper(model_simple_conv, tf.keras.optimizers.Adamax(learning_rate=0.001))
 
-history_simple_conv = model_simple_conv.fit(X_train, 
+history_simple_conv = wrap_simple_conv.fit(X_train, 
                     y_train, 
                     batch_size=BATCH_SIZE, 
                     epochs=20, 
                     validation_data=(X_valid,y_valid),
-                    callbacks=[EarlyStopLearningRateCallback()]
                     )
 
 # Plot training
 plot_history(
-    (history_simple_conv.history["loss"],
-     history_simple_conv.history["val_loss"],
-     history_simple_conv.history["accuracy"],
-     history_simple_conv.history["val_accuracy"])
+    (history_simple_conv["loss"],
+     history_simple_conv["val_loss"],
+     history_simple_conv["accuracy"],
+     history_simple_conv["val_accuracy"])
 )
 # %% Optimized convolutional model
 model_opt_conv = tf.keras.Sequential([
@@ -93,23 +87,20 @@ model_opt_conv = tf.keras.Sequential([
 ])
 
 # Compile and train the model
-model_opt_conv.compile(optimizer=tf.keras.optimizers.Adamax(learning_rate=0.001),
-              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-              metrics=["accuracy"])
+wrap_opt_conv = ModelWrapper(model_opt_conv, tf.keras.optimizers.Adamax(learning_rate=0.001))
 
-history_opt_conv = model_opt_conv.fit(X_train, 
+history_opt_conv = wrap_opt_conv.fit(X_train, 
                     y_train, 
                     batch_size=BATCH_SIZE, 
                     epochs=20, 
                     validation_data=(X_valid,y_valid),
-                    callbacks=[EarlyStopLearningRateCallback()]
                     )
 
 # Plot training
 plot_history(
-    (history_opt_conv.history["loss"],
-     history_opt_conv.history["val_loss"],
-     history_opt_conv.history["accuracy"],
-     history_opt_conv.history["val_accuracy"])
+    (history_opt_conv["loss"],
+     history_opt_conv["val_loss"],
+     history_opt_conv["accuracy"],
+     history_opt_conv["val_accuracy"])
 )
 # %%

@@ -99,7 +99,7 @@ class ModelWrapper():
     def evaluate(self, x_train, y_train):
         preds = self.model(x_train)
 
-        return tf.keras.metrics.SparseCategoricalAccuracy()(y_train, preds).numpy()
+        return f"Accuracy: {tf.keras.metrics.SparseCategoricalAccuracy()(y_train, preds).numpy()}"
     
     def time_in_human_format(self, t):
         hours = int(t//3600)
