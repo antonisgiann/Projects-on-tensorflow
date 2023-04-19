@@ -45,7 +45,7 @@ def identity_block(input_tensor, filters, kernel_size=(3,3)):
     Residual identity convolutional block with three convolutions
     inputs:
         input_tensor: tensor in shape (batch, x, y, channel)
-        filters: list or tuple with three elements
+        filters: list or tuple with two elements
         kernel_size: kernel size of the second convolution
     return:
         tensor same dimensions as input_tensor

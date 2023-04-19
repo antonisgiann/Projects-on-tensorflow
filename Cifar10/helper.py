@@ -1,6 +1,10 @@
+import sys
+sys.path.append("..")
 import tensorflow as tf
 import time
 import numpy as np
+from utils import conv_block, identity_block
+
 
 object_map = {
     0: "Airplane",
@@ -16,7 +20,15 @@ object_map = {
 }
 
 class ModelWrapper():
+    """
+    Class that wraps tf.keras.Model to run a custom training loop
+    """
     def __init__(self, model, optimizer=tf.keras.optimizers.Adam()):
+        """
+        inputs:
+            model: expects tf.keras.Model object
+            optimizers: expects tf.keras.optimizers object
+        """
         self.model = model
         self.optimizer = optimizer
         self.loss_objective = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
@@ -24,6 +36,7 @@ class ModelWrapper():
         self.valid_loss = tf.keras.metrics.Mean(name="valid_loss")
         self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name="train_accuracy")
         self.valid_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name="valid_accuracy")
+        self.best_weights = None
 
     def fit(self, x_train, y_train, epochs, batch_size, validation_data):
         """
@@ -34,6 +47,10 @@ class ModelWrapper():
             epochs: int number of epochs
             batch_size: int batch size
             validation_data: tuple in format (x_validation, y_validation)
+        return:
+            python dictionary with the metrics of the training,
+            keys are loss, accuracy, val_loss, val_accuracy, each one is a list
+            of the corresponding metric for each epoch
         """
         # work in progress
         train_ds = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size)
@@ -43,6 +60,8 @@ class ModelWrapper():
         epoch_train_accuracy = []
         epoch_valid_loss = []
         epoch_valid_accuracy = []
+        best_acc = np.inf
+        print("Starting training")
         for i in range(epochs):
             # Batch training
             self.train_loss.reset_states()
@@ -69,6 +88,11 @@ class ModelWrapper():
             epoch_train_accuracy.append(train_accuracy)
             epoch_valid_loss.append(valid_loss)
             epoch_valid_accuracy.append(valid_accuracy)
+
+            # Save the best performing model's weights
+            if valid_accuracy < best_acc:
+                best_acc = valid_accuracy
+                self.best_weights = self.model.get_weights()
 
         return {
             "loss": epoch_train_loss,
@@ -115,6 +139,10 @@ class ModelWrapper():
     def get_model(self):
         return self.model
     
+    def get_best_model(self):
+        best_model = tf.keras.models.clone_model(self.model)
+        best_model.set_weights(self.best_weights)
+        return best_model
 
 class EarlyStopLearningRateCallback(tf.keras.callbacks.Callback):
     def __init__(self, lr_patience=3, stop_patience=5):
@@ -229,33 +257,60 @@ def conv_model(shape: tuple):
     inputs = tf.keras.Input(shape=shape)
     x = tf.keras.layers.Conv2D(filters=32, 
                                kernel_size=(5,5),
-                               kernel_regularizer=tf.keras.regularizers.l2(0.011))(inputs)
+                               kernel_regularizer=tf.keras.regularizers.l2(0.02))(inputs)
     x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
     x = tf.keras.layers.Activation("relu")(x)
     x = tf.keras.layers.MaxPool2D()(x)
     x = tf.keras.layers.Conv2D(filters=64, 
                                kernel_size=(3,3), 
                                padding="same",
-                               kernel_regularizer=tf.keras.regularizers.l2(0.011))(x)
+                               kernel_regularizer=tf.keras.regularizers.l2(0.02))(x)
     x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
     x = tf.keras.layers.Activation("relu")(x)
     x = tf.keras.layers.MaxPool2D()(x)
     x = tf.keras.layers.Conv2D(filters=128, 
                                kernel_size=(3,3), 
                                padding="same",
-                               kernel_regularizer=tf.keras.regularizers.l2(0.011))(x)
+                               kernel_regularizer=tf.keras.regularizers.l2(0.02))(x)
     x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
     x = tf.keras.layers.Activation("relu")(x)
     x = tf.keras.layers.MaxPool2D()(x)
     x = tf.keras.layers.Conv2D(filters=256, 
                                kernel_size=(3,3),
-                               kernel_regularizer=tf.keras.regularizers.l2(0.011))(x)
+                               kernel_regularizer=tf.keras.regularizers.l2(0.02))(x)
     x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
     x = tf.keras.layers.Activation("relu")(x)
     x = tf.keras.layers.GlobalAveragePooling2D()(x)
     x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Dense(100, activation="relu")(x)
     x = tf.keras.layers.Dropout(0.45)(x)
+    x = tf.keras.layers.Dense(100, activation="relu",
+                              kernel_regularizer=tf.keras.regularizers.l2(0.2),
+                              bias_regularizer=tf.keras.regularizers.l2(0.2),
+                              activity_regularizer=tf.keras.regularizers.l2(0.2))(x)
+    x = tf.keras.layers.Dropout(0.45)(x)
+    outputs = tf.keras.layers.Dense(10)(x)
+
+    return tf.keras.Model(inputs, outputs)
+
+def residual_model(shape):
+    """
+    Defines a residual convolutional neural network with optimizations
+    """
+    if tf.keras.backend.image_data_format() == "channels_last":
+        bn_axis = 3
+    else:
+        bn_axis = 1
+
+    inputs = tf.keras.Input(shape=shape)
+    x = tf.keras.layers.Conv2D(64, (5,5), padding="same")(inputs)
+    x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
+    x = tf.keras.layers.Activation("relu")(x)
+    x = identity_block(x, [128,128])
+    x = conv_block(x, [64, 128, 128])
+    x = conv_block(x , [128, 256,256])
+    x = tf.keras.layers.GlobalAveragePooling2D()(x)
+    x = tf.keras.layers.Dense(100, activation="relu")(x)
+    x = tf.keras.layers.Dropout(0.25)(x)
     outputs = tf.keras.layers.Dense(10)(x)
 
     return tf.keras.Model(inputs, outputs)
