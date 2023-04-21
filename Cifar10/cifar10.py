@@ -84,7 +84,6 @@ plot_history(
 model_opt_conv = tf.keras.Sequential([
     tf.keras.layers.Rescaling(1./255),
     tf.keras.layers.RandomFlip("horizontal"),
-    tf.keras.layers.RandomRotation(0.1),
     conv_model(shape=IMG_SHAPE)
 ])
 

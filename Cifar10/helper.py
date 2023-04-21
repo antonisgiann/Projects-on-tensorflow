@@ -37,6 +37,7 @@ class ModelWrapper():
         self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name="train_accuracy")
         self.valid_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name="valid_accuracy")
         self.best_weights = None
+        self.best_model = None
 
     def fit(self, x_train, y_train, epochs, batch_size, validation_data):
         """
@@ -93,6 +94,11 @@ class ModelWrapper():
             if valid_accuracy < best_acc:
                 best_acc = valid_accuracy
                 self.best_weights = self.model.get_weights()
+        
+        # This needs to be fixed
+        best_model = tf.keras.models.clone_model(self.model)
+        best_model.set_weights(self.best_weights)
+        self.best_model = best_model
 
         return {
             "loss": epoch_train_loss,
@@ -120,10 +126,15 @@ class ModelWrapper():
         self.valid_loss(valid_loss)
         self.valid_accuracy(y_valid, preds)
 
-    def evaluate(self, x_train, y_train):
-        preds = self.model(x_train)
+    def evaluate(self, x_test, y_test):
+        preds = self.model(x_test)
 
-        return f"Accuracy: {tf.keras.metrics.SparseCategoricalAccuracy()(y_train, preds).numpy()}"
+        return f"Accuracy: {tf.keras.metrics.SparseCategoricalAccuracy()(y_test, preds).numpy()}"
+    
+    def best_evaluate(self, x_test, y_test):
+        preds = self.best_model(x_test)
+
+        return f"Accuracy: {tf.keras.metrics.SparseCategoricalAccuracy()(y_test, preds).numpy()}"
     
     def time_in_human_format(self, t):
         hours = int(t//3600)
@@ -139,10 +150,6 @@ class ModelWrapper():
     def get_model(self):
         return self.model
     
-    def get_best_model(self):
-        best_model = tf.keras.models.clone_model(self.model)
-        best_model.set_weights(self.best_weights)
-        return best_model
 
 class EarlyStopLearningRateCallback(tf.keras.callbacks.Callback):
     def __init__(self, lr_patience=3, stop_patience=5):
