@@ -61,7 +61,7 @@ class ModelWrapper():
         epoch_train_accuracy = []
         epoch_valid_loss = []
         epoch_valid_accuracy = []
-        best_acc = np.inf
+        best_acc = 0
         print("Starting training")
         for i in range(epochs):
             # Batch training
@@ -91,14 +91,13 @@ class ModelWrapper():
             epoch_valid_accuracy.append(valid_accuracy)
 
             # Save the best performing model's weights
-            if valid_accuracy < best_acc:
+            if valid_accuracy > best_acc:
                 best_acc = valid_accuracy
                 self.best_weights = self.model.get_weights()
         
-        # This needs to be fixed
-        best_model = tf.keras.models.clone_model(self.model)
-        best_model.set_weights(self.best_weights)
-        self.best_model = best_model
+        self.best_model = tf.keras.models.clone_model(self.model)
+        self.best_model.set_weights(self.best_weights)
+        
 
         return {
             "loss": epoch_train_loss,
@@ -149,6 +148,9 @@ class ModelWrapper():
 
     def get_model(self):
         return self.model
+    
+    def get_best_model(self):
+        return self.best_model
     
 
 class EarlyStopLearningRateCallback(tf.keras.callbacks.Callback):
