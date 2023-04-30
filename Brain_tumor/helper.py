@@ -18,9 +18,6 @@ def brain_tumor_model(shape: tuple, num_classes: int):
     base_model = tf.keras.applications.efficientnet.EfficientNetB5(weights="imagenet",
                                                           include_top=False,
                                                           input_shape=shape,)
-    # base_model = tf.keras.applications.mobilenet_v2.MobileNetV2(weights="imagenet",
-    #                                                       include_top=False,
-    #                                                       input_shape=shape,)
     
     base_model.trainable = False
     

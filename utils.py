@@ -40,7 +40,7 @@ def plot_history(history, fine_tune_epoch=None, title=""):
     plt.show()
 
 
-def identity_block(input_tensor, filters, kernel_size=(3,3)):
+def identity_block(input_tensor, filters, kernel_size=(3,3), bn_axis=3):
     """
     Residual identity convolutional block with three convolutions
     inputs:
@@ -53,21 +53,21 @@ def identity_block(input_tensor, filters, kernel_size=(3,3)):
     shape = input_tensor.shape
     f1, f2 = filters
     x = tfl.Conv2D(f1, (1,1))(input_tensor)
-    x = tfl.BatchNormalization(axis=3)(x)
+    x = tfl.BatchNormalization(axis=bn_axis)(x)
     x = tfl.Activation("relu")(x)
 
     x = tfl.Conv2D(f2, kernel_size, padding="same")(x)
-    x = tfl.BatchNormalization(axis=3)(x)
+    x = tfl.BatchNormalization(axis=bn_axis)(x)
     x = tfl.Activation("relu")(x)
 
     x = tfl.Conv2D(shape[-1], (1,1))(x)
-    x = tfl.BatchNormalization(axis=3)(x)
+    x = tfl.BatchNormalization(axis=bn_axis)(x)
 
     x = tfl.Add()([input_tensor, x])
     return tfl.Activation("relu")(x)
 
 
-def conv_block(input_tensor, filters, kernel=(3,3)):
+def conv_block(input_tensor, filters, kernel=(3,3), bn_axis=3):
     """
     Residual convolutional block with three convolutions
     inputs:
@@ -78,22 +78,44 @@ def conv_block(input_tensor, filters, kernel=(3,3)):
         tensor dimensions defined by the third filter size
     """
     x = tfl.Conv2D(filters[0], (1,1), data_format="channels_last")(input_tensor)
-    x = tfl.BatchNormalization(axis=3)(x)
+    x = tfl.BatchNormalization(axis=bn_axis)(x)
     x = tfl.Activation("relu")(x)
 
     x = tfl.Conv2D(filters[1],
                            kernel, 
                            data_format="channels_last", 
                            padding="same")(x)
-    x = tfl.BatchNormalization(axis=3)(x)
+    x = tfl.BatchNormalization(axis=bn_axis)(x)
     x = tfl.Activation("relu")(x)
 
     x = tfl.Conv2D(filters[2], (1,1), data_format="channels_last")(x)
-    x = tfl.BatchNormalization(axis=3)(x)
+    x = tfl.BatchNormalization(axis=bn_axis)(x)
 
     short = tfl.Conv2D(filters[2], (1,1), data_format="channels_last")(input_tensor)
-    short = tfl.BatchNormalization(axis=3)(short)
+    short = tfl.BatchNormalization(axis=bn_axis)(short)
         
     x = tfl.Add()([x, short])
     return tfl.Activation("relu")(x)
+
+def inverted_residual_block(inputs, expansion_factor, stride, filters):
+    # Expansion phase
+    in_channels = inputs.shape[-1]
+    x = tf.keras.layers.Conv2D(expansion_factor * in_channels, kernel_size=1, strides=1, padding='same')(inputs)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.ReLU()(x)
+
+    # Depthwise convolution
+    x = tf.keras.layers.DepthwiseConv2D(kernel_size=3, strides=stride, padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.ReLU()(x)
+
+    # Linear projection
+    x = tf.keras.layers.Conv2D(filters, kernel_size=1, strides=1, padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+
+    # Skip connection
+    if stride == 1 and in_channels == filters:
+        x = tf.keras.layers.Add()([x, inputs])
+
+    return x
 

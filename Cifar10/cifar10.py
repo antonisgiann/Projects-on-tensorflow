@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 
 from helper import object_map
 from helper import ModelWrapper, EarlyStopLearningRateCallback
-from helper import simple_dense_model, simple_conv_model, conv_model
+from helper import simple_dense_model, simple_conv_model, conv_model, residual_model, transfer_model
 from utils import plot_history
 
 # Download the data and split test set to validation and test set
@@ -93,7 +93,7 @@ wrap_opt_conv = ModelWrapper(model_opt_conv, tf.keras.optimizers.Adamax(learning
 history_opt_conv = wrap_opt_conv.fit(X_train, 
                     y_train, 
                     batch_size=BATCH_SIZE, 
-                    epochs=25, 
+                    epochs=50, 
                     validation_data=(X_valid,y_valid),
                     )
 
@@ -104,4 +104,52 @@ plot_history(
      history_opt_conv["accuracy"],
      history_opt_conv["val_accuracy"])
 )
-# %%
+# %% Residual convolutional model
+model_resnet = tf.keras.Sequential([
+    tf.keras.layers.Rescaling(1./255),
+    tf.keras.layers.RandomFlip("horizontal"),
+    residual_model(shape=IMG_SHAPE)
+])
+
+# Compile and train the model
+wrap_resnet = ModelWrapper(model_resnet, tf.keras.optimizers.Adamax(learning_rate=0.001))
+
+history_resnet = wrap_resnet.fit(X_train, 
+                    y_train, 
+                    batch_size=BATCH_SIZE, 
+                    epochs=25, 
+                    validation_data=(X_valid,y_valid),
+                    )
+
+# Plot training
+plot_history(
+    (history_resnet["loss"],
+     history_resnet["val_loss"],
+     history_resnet["accuracy"],
+     history_resnet["val_accuracy"])
+)
+# %% Transfer learning
+base_model = tf.keras.applications.mobilenet_v2.MobileNetV2(input_shape=IMG_SHAPE,
+                                                            weights="imagenet",
+                                                            include_top=False)
+model_transfer = tf.keras.Sequential([
+    tf.keras.layers.RandomFlip("horizontal"),
+    transfer_model(shape=IMG_SHAPE)
+])
+
+wrap_transfer = ModelWrapper(model_transfer, tf.keras.optimizers.Adamax(learning_rate=0.001))
+
+history_transfer = wrap_transfer.fit(X_train, 
+                    y_train, 
+                    batch_size=BATCH_SIZE, 
+                    epochs=30, 
+                    validation_data=(X_valid,y_valid),
+                    )
+
+# Plot training
+plot_history(
+    (history_transfer["loss"],
+     history_transfer["val_loss"],
+     history_transfer["accuracy"],
+     history_transfer["val_accuracy"])
+)

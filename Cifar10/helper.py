@@ -266,36 +266,44 @@ def conv_model(shape: tuple):
     inputs = tf.keras.Input(shape=shape)
     x = tf.keras.layers.Conv2D(filters=32, 
                                kernel_size=(5,5),
-                               kernel_regularizer=tf.keras.regularizers.l2(0.02))(inputs)
+                               kernel_regularizer=tf.keras.regularizers.l2(),
+                               activity_regularizer=tf.keras.regularizers.l2())(inputs)
     x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
     x = tf.keras.layers.Activation("relu")(x)
     x = tf.keras.layers.MaxPool2D()(x)
     x = tf.keras.layers.Conv2D(filters=64, 
                                kernel_size=(3,3), 
                                padding="same",
-                               kernel_regularizer=tf.keras.regularizers.l2(0.02))(x)
+                               kernel_regularizer=tf.keras.regularizers.l2(),
+                               activity_regularizer=tf.keras.regularizers.l2())(x)
     x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
     x = tf.keras.layers.Activation("relu")(x)
     x = tf.keras.layers.MaxPool2D()(x)
     x = tf.keras.layers.Conv2D(filters=128, 
                                kernel_size=(3,3), 
                                padding="same",
-                               kernel_regularizer=tf.keras.regularizers.l2(0.02))(x)
+                               kernel_regularizer=tf.keras.regularizers.l2(),
+                               bias_regularizer=tf.keras.regularizers.l2(),
+                               activity_regularizer=tf.keras.regularizers.l2())(x)
+    x = tf.keras.layers.Dropout(0.45)(x)
     x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
     x = tf.keras.layers.Activation("relu")(x)
     x = tf.keras.layers.MaxPool2D()(x)
     x = tf.keras.layers.Conv2D(filters=256, 
                                kernel_size=(3,3),
-                               kernel_regularizer=tf.keras.regularizers.l2(0.02))(x)
+                               kernel_regularizer=tf.keras.regularizers.l2(),
+                               bias_regularizer=tf.keras.regularizers.l2(),
+                               activity_regularizer=tf.keras.regularizers.l2())(x)
+    x = tf.keras.layers.Dropout(0.45)(x)
     x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
     x = tf.keras.layers.Activation("relu")(x)
     x = tf.keras.layers.GlobalAveragePooling2D()(x)
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.Dropout(0.45)(x)
     x = tf.keras.layers.Dense(100, activation="relu",
-                              kernel_regularizer=tf.keras.regularizers.l2(0.2),
-                              bias_regularizer=tf.keras.regularizers.l2(0.2),
-                              activity_regularizer=tf.keras.regularizers.l2(0.2))(x)
+                              kernel_regularizer=tf.keras.regularizers.l2(),
+                              bias_regularizer=tf.keras.regularizers.l2(),
+                              activity_regularizer=tf.keras.regularizers.l2())(x)
     x = tf.keras.layers.Dropout(0.45)(x)
     outputs = tf.keras.layers.Dense(10)(x)
 
@@ -314,13 +322,35 @@ def residual_model(shape):
     x = tf.keras.layers.Conv2D(64, (5,5), padding="same")(inputs)
     x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
     x = tf.keras.layers.Activation("relu")(x)
-    x = identity_block(x, [128,128])
-    x = conv_block(x, [64, 128, 128])
-    x = conv_block(x , [128, 256,256])
+    x = identity_block(x, [128,128], bn_axis=bn_axis)
+    x = conv_block(x, [64, 128, 128], bn_axis=bn_axis)
+    x = conv_block(x , [128, 256,256], bn_axis=bn_axis)
+    x = identity_block(x, [256,256], bn_axis=bn_axis)
+    x = conv_block(x, [128, 512, 512], bn_axis=bn_axis)
+    x = conv_block(x, [256, 512, 512], bn_axis=bn_axis)
+    x = identity_block(x, [512,512], bn_axis=bn_axis)
+    x = conv_block(x, [256, 1024, 1024], bn_axis=bn_axis)
+    x = conv_block(x, [512, 1024, 1024], bn_axis=bn_axis)
     x = tf.keras.layers.GlobalAveragePooling2D()(x)
     x = tf.keras.layers.Dense(100, activation="relu")(x)
     x = tf.keras.layers.Dropout(0.25)(x)
     outputs = tf.keras.layers.Dense(10)(x)
 
     return tf.keras.Model(inputs, outputs)
-  
+
+def transfer_model(shape):
+    """
+    Defines a model using transfer learning
+    """
+    base_model = tf.keras.applications.mobilenet_v2.MobileNetV2(input_shape=shape,
+                                                                weights="imagenet",
+                                                                include_top=False)
+    base_model.trainable = False
+
+    inputs = tf.keras.Input(shape=shape)
+    x = tf.keras.applications.mobilenet_v2.preprocess_input(inputs)
+    x = base_model(x , training=False)
+    x = tf.keras.layers.GlobalAveragePooling2D()(x)
+    outputs = tf.keras.layers.Dense(10)(x)
+
+    return tf.keras.Model(inputs, outputs)
