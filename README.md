@@ -2,6 +2,7 @@
 
 ### Environment set up
 In the terminal run <b>poetry install</b>, after the installer finishes, run <b>poetry shell</b> and then <b>pip install tensorflow</b> to add tensorflow in the environment
+Everything was run on my personal machine, with CPU: ryzen 7 3700x, GPU: rtx 2060 super
 
 ### Projects
 <ol>
@@ -28,6 +29,13 @@ In the terminal run <b>poetry install</b>, after the installer finishes, run <b>
      	<li><a href="https://www.kaggle.com/datasets/fernando2rad/brain-tumor-mri-images-44c" target="_blank"> link of the dataset</a>, the goal is to create a classifier that sees a brain scan and decides what brain tumor it is.</li>
       <li>EfficientNet was the best performer for trasnfer learning.</li>
       <li>The script expects a <b>kaggle.json</b> file with the kaggle API credentials in the workding directory of the script to be used by <b>opendatasets</b> to download and extract the dataset in the <b>datasets</b> directory</li>
+     </ul>
+   </li>
+   <li>
+    <h3>Cifar 10</h3>
+     <ul>
+     	<li>Tried different neural network architectures on cifar 10.</li>
+      <li>Impletemented custom training loop</li>  
      </ul>
    </li>
 </ol>
