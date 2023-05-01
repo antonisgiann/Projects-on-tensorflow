@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 
 from helper import object_map
 from helper import ModelWrapper, EarlyStopLearningRateCallback
-from helper import simple_dense_model, simple_conv_model, conv_model, residual_model, transfer_model
+from helper import simple_dense_model, simple_conv_model, conv_model, residual_model, bottleneck_model
 from utils import plot_history
 
 # Download the data and split test set to validation and test set
@@ -129,27 +129,25 @@ plot_history(
      history_resnet["val_accuracy"])
 )
 # %% Transfer learning
-base_model = tf.keras.applications.mobilenet_v2.MobileNetV2(input_shape=IMG_SHAPE,
-                                                            weights="imagenet",
-                                                            include_top=False)
-model_transfer = tf.keras.Sequential([
+model_bottleneck = tf.keras.Sequential([
     tf.keras.layers.RandomFlip("horizontal"),
-    transfer_model(shape=IMG_SHAPE)
+    bottleneck_model(shape=IMG_SHAPE)
 ])
 
-wrap_transfer = ModelWrapper(model_transfer, tf.keras.optimizers.Adamax(learning_rate=0.001))
+wrap_bottleneck = ModelWrapper(model_bottleneck, tf.keras.optimizers.Adamax(learning_rate=0.001))
 
-history_transfer = wrap_transfer.fit(X_train, 
+history_bottleneck = wrap_bottleneck.fit(X_train, 
                     y_train, 
                     batch_size=BATCH_SIZE, 
-                    epochs=30, 
+                    epochs=20, 
                     validation_data=(X_valid,y_valid),
                     )
 
 # Plot training
 plot_history(
-    (history_transfer["loss"],
-     history_transfer["val_loss"],
-     history_transfer["accuracy"],
-     history_transfer["val_accuracy"])
+    (history_bottleneck["loss"],
+     history_bottleneck["val_loss"],
+     history_bottleneck["accuracy"],
+     history_bottleneck["val_accuracy"])
 )
+# %%

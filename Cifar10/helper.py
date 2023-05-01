@@ -3,7 +3,7 @@ sys.path.append("..")
 import tensorflow as tf
 import time
 import numpy as np
-from utils import conv_block, identity_block
+from utils import conv_block, identity_block, inverted_residual_block
 
 
 object_map = {
@@ -338,19 +338,27 @@ def residual_model(shape):
 
     return tf.keras.Model(inputs, outputs)
 
-def transfer_model(shape):
+def bottleneck_model(shape):
     """
     Defines a model using transfer learning
     """
-    base_model = tf.keras.applications.mobilenet_v2.MobileNetV2(input_shape=shape,
-                                                                weights="imagenet",
-                                                                include_top=False)
-    base_model.trainable = False
+
+    if tf.keras.backend.image_data_format() == "channels_last":
+        bn_axis = 3
+    else:
+        bn_axis = 1
 
     inputs = tf.keras.Input(shape=shape)
-    x = tf.keras.applications.mobilenet_v2.preprocess_input(inputs)
-    x = base_model(x , training=False)
+    x = tf.keras.layers.Conv2D(64, kernel_size=(5,5), padding="same")(inputs)
+    x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
+    x = tf.keras.layers.Activation("relu")(x)
+    x = inverted_residual_block(x, 2, 1, 64)
+    x = tf.keras.layers.Conv2D(128, kernel_size=(3,3), padding="same")(x)
+    x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
+    x = tf.keras.layers.Activation("relu")(x)
+    x = inverted_residual_block(x, 2, 1, 128)
     x = tf.keras.layers.GlobalAveragePooling2D()(x)
+    x = tf.keras.layers.Dense(100, activation="relu")(x)
     outputs = tf.keras.layers.Dense(10)(x)
 
     return tf.keras.Model(inputs, outputs)
