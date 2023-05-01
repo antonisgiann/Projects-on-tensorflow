@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 
 from helper import object_map
 from helper import ModelWrapper, EarlyStopLearningRateCallback
-from helper import simple_dense_model, simple_conv_model, conv_model
+from helper import simple_dense_model, simple_conv_model, conv_model, residual_model, bottleneck_model
 from utils import plot_history
 
 # Download the data and split test set to validation and test set
@@ -83,6 +83,7 @@ plot_history(
 # %% Optimized convolutional model
 model_opt_conv = tf.keras.Sequential([
     tf.keras.layers.Rescaling(1./255),
+    tf.keras.layers.RandomFlip("horizontal"),
     conv_model(shape=IMG_SHAPE)
 ])
 
@@ -92,7 +93,7 @@ wrap_opt_conv = ModelWrapper(model_opt_conv, tf.keras.optimizers.Adamax(learning
 history_opt_conv = wrap_opt_conv.fit(X_train, 
                     y_train, 
                     batch_size=BATCH_SIZE, 
-                    epochs=20, 
+                    epochs=50, 
                     validation_data=(X_valid,y_valid),
                     )
 
@@ -102,5 +103,51 @@ plot_history(
      history_opt_conv["val_loss"],
      history_opt_conv["accuracy"],
      history_opt_conv["val_accuracy"])
+)
+# %% Residual convolutional model
+model_resnet = tf.keras.Sequential([
+    tf.keras.layers.Rescaling(1./255),
+    tf.keras.layers.RandomFlip("horizontal"),
+    residual_model(shape=IMG_SHAPE)
+])
+
+# Compile and train the model
+wrap_resnet = ModelWrapper(model_resnet, tf.keras.optimizers.Adamax(learning_rate=0.001))
+
+history_resnet = wrap_resnet.fit(X_train, 
+                    y_train, 
+                    batch_size=BATCH_SIZE, 
+                    epochs=25, 
+                    validation_data=(X_valid,y_valid),
+                    )
+
+# Plot training
+plot_history(
+    (history_resnet["loss"],
+     history_resnet["val_loss"],
+     history_resnet["accuracy"],
+     history_resnet["val_accuracy"])
+)
+# %% Transfer learning
+model_bottleneck = tf.keras.Sequential([
+    tf.keras.layers.RandomFlip("horizontal"),
+    bottleneck_model(shape=IMG_SHAPE)
+])
+
+wrap_bottleneck = ModelWrapper(model_bottleneck, tf.keras.optimizers.Adamax(learning_rate=0.001))
+
+history_bottleneck = wrap_bottleneck.fit(X_train, 
+                    y_train, 
+                    batch_size=BATCH_SIZE, 
+                    epochs=20, 
+                    validation_data=(X_valid,y_valid),
+                    )
+
+# Plot training
+plot_history(
+    (history_bottleneck["loss"],
+     history_bottleneck["val_loss"],
+     history_bottleneck["accuracy"],
+     history_bottleneck["val_accuracy"])
 )
 # %%

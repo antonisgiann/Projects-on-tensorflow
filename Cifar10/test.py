@@ -1,3 +1,4 @@
+# %%
 import sys
 sys.path.append("..")
 import matplotlib.pyplot as plt
@@ -55,3 +56,4 @@ plt.plot(history1["accuracy"], label="accuracy_custom")
 plt.plot(history2.history["sparse_categorical_accuracy"], label="accuracy")
 plt.legend()
 plt.show()
+# %%
