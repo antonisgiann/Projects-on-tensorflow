@@ -23,7 +23,7 @@ class ModelWrapper():
     """
     Class that wraps tf.keras.Model to run a custom training loop
     """
-    def __init__(self, model, optimizer=tf.keras.optimizers.Adam()):
+    def __init__(self, model, optimizer=tf.keras.optimizers.Adam(), regularization=False):
         """
         inputs:
             model: expects tf.keras.Model object
@@ -31,6 +31,7 @@ class ModelWrapper():
         """
         self.model = model
         self.optimizer = optimizer
+        self.regularization = regularization
         self.loss_objective = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         self.train_loss = tf.keras.metrics.Mean(name="train_loss")
         self.valid_loss = tf.keras.metrics.Mean(name="valid_loss")
@@ -111,6 +112,9 @@ class ModelWrapper():
         with tf.GradientTape() as tape:
             preds = self.model(x_train, training=True)
             loss = self.loss_objective(y_train, preds)
+            if self.regularization:
+                loss += tf.math.add_n(self.model.losses)
+                
         grads = tape.gradient(loss, self.model.trainable_variables)
         self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
 
