@@ -114,7 +114,7 @@ class ModelWrapper():
             loss = self.loss_objective(y_train, preds)
             if self.regularization:
                 loss += tf.math.add_n(self.model.losses)
-                
+
         grads = tape.gradient(loss, self.model.trainable_variables)
         self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
 
@@ -269,35 +269,26 @@ def conv_model(shape: tuple):
 
     inputs = tf.keras.Input(shape=shape)
     x = tf.keras.layers.Conv2D(filters=32, 
-                               kernel_size=(5,5),
-                               kernel_regularizer=tf.keras.regularizers.l2(),
-                               activity_regularizer=tf.keras.regularizers.l2())(inputs)
+                               kernel_size=(5,5))(inputs)
     x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
     x = tf.keras.layers.Activation("relu")(x)
     x = tf.keras.layers.MaxPool2D()(x)
     x = tf.keras.layers.Conv2D(filters=64, 
                                kernel_size=(3,3), 
-                               padding="same",
-                               kernel_regularizer=tf.keras.regularizers.l2(),
-                               activity_regularizer=tf.keras.regularizers.l2())(x)
+                               padding="same")(x)
     x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
     x = tf.keras.layers.Activation("relu")(x)
     x = tf.keras.layers.MaxPool2D()(x)
     x = tf.keras.layers.Conv2D(filters=128, 
                                kernel_size=(3,3), 
-                               padding="same",
-                               kernel_regularizer=tf.keras.regularizers.l2(),
-                               bias_regularizer=tf.keras.regularizers.l2(),
-                               activity_regularizer=tf.keras.regularizers.l2())(x)
+                               padding="same")(x)
     x = tf.keras.layers.Dropout(0.45)(x)
     x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
     x = tf.keras.layers.Activation("relu")(x)
     x = tf.keras.layers.MaxPool2D()(x)
     x = tf.keras.layers.Conv2D(filters=256, 
                                kernel_size=(3,3),
-                               kernel_regularizer=tf.keras.regularizers.l2(),
-                               bias_regularizer=tf.keras.regularizers.l2(),
-                               activity_regularizer=tf.keras.regularizers.l2())(x)
+                               kernel_regularizer=tf.keras.regularizers.l2(0.012))(x)
     x = tf.keras.layers.Dropout(0.45)(x)
     x = tf.keras.layers.BatchNormalization(axis=bn_axis)(x)
     x = tf.keras.layers.Activation("relu")(x)
@@ -305,9 +296,7 @@ def conv_model(shape: tuple):
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.Dropout(0.45)(x)
     x = tf.keras.layers.Dense(100, activation="relu",
-                              kernel_regularizer=tf.keras.regularizers.l2(),
-                              bias_regularizer=tf.keras.regularizers.l2(),
-                              activity_regularizer=tf.keras.regularizers.l2())(x)
+                              kernel_regularizer=tf.keras.regularizers.l2(0.012))(x)
     x = tf.keras.layers.Dropout(0.45)(x)
     outputs = tf.keras.layers.Dense(10)(x)
 

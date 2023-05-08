@@ -93,7 +93,7 @@ wrap_opt_conv = ModelWrapper(model_opt_conv, tf.keras.optimizers.Adamax(learning
 history_opt_conv = wrap_opt_conv.fit(X_train, 
                     y_train, 
                     batch_size=BATCH_SIZE, 
-                    epochs=50, 
+                    epochs=40, 
                     validation_data=(X_valid,y_valid),
                     )
 
