@@ -3,3 +3,5 @@ datasets
 __pycache__
 test.py
 kaggle.json
+*.png
+*.pkl
