@@ -128,7 +128,7 @@ plot_history(
      history_resnet["accuracy"],
      history_resnet["val_accuracy"])
 )
-# %% Transfer learning
+# %% Bottleneck model
 model_bottleneck = tf.keras.Sequential([
     tf.keras.layers.RandomFlip("horizontal"),
     bottleneck_model(shape=IMG_SHAPE)

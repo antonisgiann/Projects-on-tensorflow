@@ -129,15 +129,21 @@ class ModelWrapper():
         self.valid_loss(valid_loss)
         self.valid_accuracy(y_valid, preds)
 
-    def evaluate(self, x_test, y_test):
-        preds = self.model(x_test)
+    def evaluate(self, test_ds, best=False):
+        test_acc = tf.keras.metrics.SparseCategoricalAccuracy(name="test_accuracy")
+        if best:
+            if self.best_model:
+                model = self.best_model
+            else:
+                model = self.model
+        else:
+            model = self.model
 
-        return f"Accuracy: {tf.keras.metrics.SparseCategoricalAccuracy()(y_test, preds).numpy()}"
-    
-    def best_evaluate(self, x_test, y_test):
-        preds = self.best_model(x_test)
+        for test_img, test_label in test_ds:
+            preds = model(test_img, training=False)
+            test_acc(test_label, preds)
 
-        return f"Accuracy: {tf.keras.metrics.SparseCategoricalAccuracy()(y_test, preds).numpy()}"
+        return f"Accuracy: {test_acc.result().numpy()}"
     
     def time_in_human_format(self, t):
         hours = int(t//3600)
