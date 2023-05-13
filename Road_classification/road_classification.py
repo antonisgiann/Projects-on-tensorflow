@@ -82,7 +82,6 @@ base_mobilenet = tf.keras.applications.mobilenet_v2.MobileNetV2(
     weights="imagenet", include_top=False, input_shape=IMG_SHAPE
     )
 # %% Without data augmentation
-
 base_mobilenet.trainable = False
 model =  road_classification_model(IMG_SHAPE, base_mobilenet)
 
@@ -148,7 +147,7 @@ val_loss = history_initial_augm.history["val_loss"] + history_fine_augm.history[
 plot_history((loss, val_loss, acc, val_acc), initial_epochs, "With data augmentation")
 
 # %%
-# %% Without data augmentation
+# %% Augmented dataset
 base_mobilenet.trainable = False
 model_merged =  road_classification_model(IMG_SHAPE, base_mobilenet)
 

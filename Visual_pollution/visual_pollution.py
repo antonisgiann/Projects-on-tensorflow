@@ -1,4 +1,6 @@
 # %%
+import sys
+sys.path.append("..")
 import tensorflow as tf
 import os
 import pandas as pd
@@ -10,7 +12,7 @@ from helper import  pollution_model_transfer
 
 
 PROJECT_NAME = __file__.split("/")[-1][:-3]
-DATA_PATH = os.path.join(os.getcwd(), "datasets", PROJECT_NAME)
+DATA_PATH = os.path.join(f"../datasets/{PROJECT_NAME}")
 BATCH_SIZE = 32
 IMG_SHAPE = (224,224,3)
 
